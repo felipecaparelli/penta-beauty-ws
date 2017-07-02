@@ -64,57 +64,26 @@ var ProductSchema = new Schema({
 
 module.exports = mongoose.model('Products', ProductSchema);
 
+//routes
+require('./app/routes')(app, {});
+
 //i18n settings
 require('./config/i18n')(app);
 
 // Bootstrap application settings
 require('./config/express')(app);
 
-// Create the service wrapper
-var personalityInsights = watson.personality_insights({
-  version: 'v2',
-  username: '<username>',
-  password: '<password>'
-});
-
-app.get('/', function(req, res) {
-  res.render('index', { ct: req._csrfToken });
-});
-
-app.post('/api/profile', function(req, res, next) {
-  var parameters = extend(req.body, { acceptLanguage : i18n.lng() });
-
-  personalityInsights.profile(parameters, function(err, profile) {
-    if (err)
-      return next(err);
-    else
-      return res.json(profile);
-  });
-});
-
-app.post('/api/login', function(req, res, next) {
-	// Save the access token
-	oauth2.ownerPassword.getToken(tokenConfig, (error, result) => {
-	  if (error) {
-		return console.log('Access Token Error', error.message);
-	  }
-
-	  const token = oauth2.accessToken.create(result);
-	});
-});
-
-
-app.get('/api/shop', function (req, res) {
-   //item
-	//console.log(req.body);
-	res.end(req.body);
-})
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // error-handler settings
 require('./config/error-handler')(app);
 
 var port = process.env.PORT || process.env.VCAP_APP_PORT || 3000;
 
-app.listen(port);
-
-console.log('listening at:', port);
+MongoClient.connect(db.url, (err, database) => {
+  if (err) return console.log(err)
+  require('./app/routes')(app, database);
+  app.listen(port, () => {
+    console.log('We are live on ' + port);
+  });               
+})
